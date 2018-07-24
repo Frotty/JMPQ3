@@ -22,11 +22,11 @@ public class CompressionUtil {
     private static final byte FLAG_ADPCM2C = -0x80;
     private static final byte FLAG_LMZA = 0x12;
 
-    public static byte[] compress(byte[] temp, boolean recompress) {
-        if (recompress && zopfli == null) {
+    public static byte[] compress(byte[] temp, RecompressOptions recompress) {
+        if (recompress.recompress && recompress.useZopfli && zopfli == null) {
             zopfli = new ZopfliHelper();
         }
-        return recompress ? zopfli.deflate(temp) : JzLibHelper.deflate(temp);
+        return recompress.useZopfli ? zopfli.deflate(temp, recompress.iterations) : JzLibHelper.deflate(temp);
     }
 
     public static byte[] decompress(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
@@ -56,7 +56,7 @@ public class CompressionUtil {
                 throw new JMpqException("Unsupported compression Bzip2");
             } else if (isImploded) {
                 byte[] output = new byte[uncompressedSize];
-                Exploder.pkexplode(sector, output);
+                Exploder.pkexplode(sector, output, 1);
                 out.put(output);
                 out.position(0);
                 flip = !flip;
@@ -95,6 +95,20 @@ public class CompressionUtil {
                 return newOut.array();
             }
             return (flip ? out : in).array();
+        }
+    }
+
+    public static byte[] explode(byte[] sector, int compressedSize, int uncompressedSize) throws JMpqException {
+        if (compressedSize == uncompressedSize) {
+            return sector;
+        } else {
+            ByteBuffer out = ByteBuffer.wrap(new byte[uncompressedSize]);
+
+            byte[] output = new byte[uncompressedSize];
+            Exploder.pkexplode(sector, output, 0);
+            out.put(output);
+            out.position(0);
+            return out.array();
         }
     }
 }
